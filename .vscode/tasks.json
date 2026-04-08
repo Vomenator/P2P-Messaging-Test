@@ -7,13 +7,12 @@
             "args": [
                 "-fdiagnostics-color=always",
                 "-g",
-                "${fileDirname}\\main.cpp",
-                "${fileDirname}\\server.cpp",
-                "${fileDirname}\\client.cpp",
+                "${file}",
                 "-o",
                 "${fileDirname}\\${fileBasenameNoExtension}.exe",
-                "-lws2_32",
-                "-static",
+                "${main.cpp}",
+                "${server.cpp}",
+                "${client.cpp}"
             ],
             "options": {
                 "cwd": "C:\\msys64\\ucrt64\\bin"

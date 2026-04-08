@@ -1,2 +1,6 @@
+#hello world
 *.json
 *.log
+.vscode/
+*.code-workspace
+*.exe

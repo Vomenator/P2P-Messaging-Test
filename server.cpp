@@ -1,50 +1,54 @@
 #include "common.hpp"
+#include <bitset>
 
-IP localIP;
 bool exitprog = false;
+Message recvMessage;
+networkbase serverObject;
+
+bool recvMSG(SOCKET sock, Message& message) {
+    //char* msg;
+    uint32_t len = 264;
+    //serverObject.recievePacket(sock, &message, len);
+    //if(len != networkConfigVAR::MSG_LEN) return false;
+    return true;
+}
 
 int handlepeer(SOCKET sock, std::string peeraddr) {
-    Message msg{};
+    //peer.setupForeignAddr(peeraddr, NULL);
+    Message msg = {};
     std::cout << "[P2P] PEER " << peeraddr << " CONNECTED";
+    std::cout << std::dec << sizeof(msg) << "\n";
 
-    while (exitprog == false) {
-        //if()
+    while (true) {
+        if (recvMSG(sock, msg) == true) {
+            //std::cout << "hello world!111";
+            std::cout << std::bitset<264>(*reinterpret_cast<char*>(&msg));
+            std::cout << "\n";
+            if (msg.type == MessageType::LIST_REQ) {
+                std::cout << "hello world!";
+            }
+            if (msg.type == MessageType::LIST_ACK) {
+                std::cout << "hamburger!";
+            }
+        }
     }
     return 0;
 }
 
 
-int ServerEntry() {
-    std::string exit;
-
-    SOCKET OUTsocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);       // this binds the rules to the socket itself configuring the rules
+int ServerEntry(int port) {
+    serverObject.configureNetwork(); // initalises global network variables
+    serverObject.setuplocalAddr(port); // initalises local address
+    SOCKET OUTsocket = serverObject.networkinitTCP(true, false); // initalises the server socket
     if (OUTsocket == INVALID_SOCKET) {
-        std::cout << "an Error has occured! INVALID SERVER SOCKET: 0x" << WSAGetLastError();
-        WSACleanup();
+        std::cout << "ERROR INVALID SERVER SOCK!: 0x" << WSAGetLastError();
+        serverObject.ExitService(OUTsocket);
         return -1;
     }
+    std::string exit;
+    
     bool opt = true;
-    setsockopt(OUTsocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*>(&opt), sizeof(opt));
-
-    std::cout << "binding socket...";
-    sockaddr_in localaddr{};
-    localaddr.sin_family      = AF_INET;
-    localaddr.sin_port        = htons(static_cast<u_short>(ForeignIP.port));
-
-    if (bind(OUTsocket, reinterpret_cast<sockaddr*>(&localaddr), sizeof(localaddr)) == SOCKET_ERROR) {
-        std::cout << "An error has occured! BINDING SOCKET: 0x" << WSAGetLastError();
-        ExitService(OUTsocket);
-        return -1;
-    }
-    std::cout << "\r\x1b[2K" << "success!";
-
-    if(listen(OUTsocket, 10) == SOCKET_ERROR) {
-        std::cout << "\r AN ERROR HAS OCCURED!, 0x" << WSAGetLastError();
-        ExitService(OUTsocket);
-        return -1;
-    }
-    system("cls");
-    std::cout << "[P2P] LISTENING... ON PORT: " << ForeignIP.port;
+    //setsockopt(OUTsocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*>(&opt), sizeof(opt));
 
     while (exitprog == false) {
 
@@ -52,18 +56,21 @@ int ServerEntry() {
         int sizepeer = sizeof(clientaddr);
 
         SOCKET client = accept(OUTsocket, reinterpret_cast<sockaddr*>(&clientaddr), &sizepeer);
-        //SOCKET client = accept(OUTsocket, reinterpret_cast<sockaddr*>(&clientaddr), &sizepeer);
         if (client == INVALID_SOCKET) {
-            std::cout << "AN ERROR HAS OCCURED!, 0x" << WSAGetLastError();
+            std::cout << " AN ERROR HAS OCCURED!, 0x" << WSAGetLastError();
             continue;
         }
         else {
+            std::cout << "newclient!";
             char ip[INET_ADDRSTRLEN]{};
             InetNtopA(AF_INET, &clientaddr.sin_addr, ip, sizeof(ip));
-            handlepeer(client, std::string(ip));
+            std::thread(handlepeer, client, std::string(ip)).detach();
         }
+        //std::cin >> exit;
+        //if (exit == "exit") {
+          //  exitprog = true;
+        //}
     }
-    std::cin >> exit;
-    ExitService(OUTsocket);
+    serverObject.ExitService(OUTsocket);
     return 0;
 }

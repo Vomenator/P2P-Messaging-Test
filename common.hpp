@@ -1,103 +1,38 @@
 #pragma once
-#pragma comment(lib,"Ws2_32.lib")
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <iostream>
-#include <string>
-#include <cstdlib>
-#include <mutex>
-#include <filesystem>
-#include <fstream>
-#include <cstdint>
-#include <vector>
 
-namespace fs = std::filesystem;
+#include "networkingbasic_lib/windows/windowsINET.h"
+//#include <thread>
 
-inline constexpr int MSG_LEN = 256;
-inline constexpr int PAYLOADLENGTH = 1024;
+//namespace fs = std::filesystem;
 
-enum class MSGTYPE : unsigned char {
-    SEND_ACK = 0,
-    LIST_REQ = 1,
-    LIST_ACK = 2,
-    GET_FILE = 3,
-    SEND_FILE = 4,
-    FILE_BYTE = 5,
-    ISSUE = 6
-};
-
-struct IP{
-    std::string IPaddress;
-    int         port;
-};
-
-#pragma pack(push, 1)
-struct Message {
-    MSGTYPE            type;
-    unsigned long long payload_len;
-    char               filename[247];
-};
-#pragma pack(pop)
-static_assert(sizeof(Message) == MSG_LEN, "Header must be exactly 256 bytes");        // gets final size of the header
-
-extern IP ForeignIP;
+extern networkbase serverObject;
+extern Message sendMessage;
 
 
-inline void ExitService(SOCKET sock) {
-    closesocket(sock);
-    WSACleanup();
-}
 
-bool send_all(SOCKET sock, const char* data, int length, int flags) {
-    int totalSent = 0;
-    int bytesLeft = length;
-    const char* dataPtr = data;
-
-    while (totalSent < sizeof(sendMSG)) {
-        int sent = send(sock, dataPtr + totalSent, bytesLeft, 0);
-        if (sent == SOCKET_ERROR) {
-            std::cerr << "Error sending message: " << WSAGetLastError() << std::endl;
-            return false; // Handle error appropriately
-        }
-        totalSent += sent;
-        bytesLeft -= sent;
-    }
-    return true; // Message sent successfully
-}
-
-void getLocalfiles(SOCKET sock) {
-    std::vector<std::string> files = {};
-    int i = 0;
-    fs::path stupidredef = "./shared";
-    for (const auto& file : fs::directory_iterator(stupidredef)) {
-        std::cout << "["<< i << "]: "<< file.path().filename().string() << "\n";
-        files.push_back(file.path().filename().string());
-        i++;
-    }
-    //uint64_t length = sizeof(files);
-    std::cout << "done\n";
-    sendMSG(sock, Message{MSGTYPE::LIST_ACK});
-}
-
-inline void sendMSG(SOCKET sock, Message type, const std::string& filename = "") {
-    Message sendMSG {};
-
-    sendMSG.type = type.type;
-    sendMSG.payload_len = files.size();
+inline bool sendMSG(SOCKET sock, MessageType type, const std::string& filename = "") {
+    Message newMessage;
+    newMessage.type = type;
+    std::cout<<"hello";
+    //newMessage->length = files.size();
     
     // data restructure, convers the vector<string> into a char array;
     if (!filename.empty()) {
-        strncpy_s(sendMSG.filename, sizeof(sendMSG.filename), filename.c_str(), _TRUNCATE);
+        //strncpy_s(sendMessage.MessageData.assign(filename.begin(), filename.end()).data(), sizeof(sendMessage.MessageData), filename.c_str(), _TRUNCATE);
+        newMessage.MessageData.assign(filename.c_str(), filename.c_str() + filename.size() + 1); // this adds the charactor to each index, and makes sure to add the null terminator at the end
     }
-    if (!send_all(sock, reinterpret_cast<const char*>(&sendMSG), sizeof(sendMSG), 0)) {
+    if (serverObject.sendPacket(sock, reinterpret_cast<const char*>(&newMessage), sizeof(newMessage))) {
         std::cerr << "Failed to send message." << std::endl;
+        return false;
     }
+    
+    return true;
 }
 
 // FORWARD DECLARATIONS
 
     // SERVER.CPP
-int ServerEntry();
+int ServerEntry(int port);
 
     // CLIENT.CPP
-int ClientEntry(std::string& IP, int port);
+int ClientEntry(std::string IP, int port);
